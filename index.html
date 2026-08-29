@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balística Forense Cartagena</title>
+<meta name="theme-color" content="#e94560">
+<style>
+*{box-sizing:border-box;font-family:system-ui}
+body{margin:0;background:#0e0e15;color:#fff}
+.header{padding:18px;background:linear-gradient(135deg,#1a1a2e,#e94560);position:sticky;top:0}
+.card{background:#1a1a2a;border:1px solid #2a2a4a;border-radius:12px;padding:14px;margin:12px}
+input,textarea,select{width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;color:#fff;padding:10px;margin:4px 0 8px}
+.btn{background:#e94560;border:0;border-radius:8px;padding:12px;width:100%;font-weight:700;color:#fff}
+.badge{background:#e9456020;color:#ff6b8a;padding:3px 8px;border-radius:20px;font-size:10px}
+</style>
+</head>
+<body>
+<div class="header"><h1 style="margin:0">🔬 BALÍSTICA CARTAGENA</h1><p style="margin:0;opacity:.8;font-size:12px">Gestor de casos con foto</p></div>
+
+<div class="card">
+<input id="caso" placeholder="N° Caso Ej: 2026-001-CTG">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<select id="tipo"><option>Pistola</option><option>Revólver</option><option>Fusil</option><option>Escopeta</option></select>
+<input id="calibre" placeholder="Calibre 9mm .38">
+</div>
+<input id="marca" placeholder="Marca/Modelo">
+<input id="photo" type="file" accept="image/*" multiple>
+<textarea id="obs" placeholder="Dictamen, estrías, vainillas..."></textarea>
+<button class="btn" onclick="save()">💾 GUARDAR CASO</button>
+</div>
+<input id="q" placeholder="🔍 Buscar caso, calibre..." oninput="render()" style="margin:0 12px;width:calc(100% - 24px);background:#1a1a2a;border-radius:8px;padding:10px;color:#fff;border:1px solid #2a2a4a">
+<div id="list"></div>
+
+<script>
+let data=JSON.parse(localStorage.getItem('balistica_ctg')||'[]');
+function save(){
+ let files=document.getElementById('photo').files;
+ if(files.length===0) return alert('Agrega al menos 1 foto del arma');
+ let imgs=[]; let done=0;
+ for(let f of files){ let r=new FileReader(); r.onload=e=>{imgs.push(e.target.result);done++;if(done===files.length)doSave(imgs)};r.readAsDataURL(f);}
+ function doSave(imgs){
+  data.unshift({id:Date.now(),caso:caso.value,tipo:tipo.value,calibre:calibre.value,marca:marca.value,obs:obs.value,imgs:imgs,date:new Date().toLocaleString('es-CO')});
+  localStorage.setItem('balistica_ctg',JSON.stringify(data)); render();
+ }
+}
+function render(){
+ let q=document.getElementById('q').value.toLowerCase();
+ document.getElementById('list').innerHTML=data.filter(x=>(x.caso+x.calibre).toLowerCase().includes(q)).map(x=>`
+  <div class="card" style="border-left:3px solid #e94560">
+   <div style="display:flex;justify-content:space-between"><b>${x.caso}</b><span class="badge">${x.tipo} ${x.calibre}</span></div>
+   <div style="font-size:11px;opacity:.6">${x.marca} • ${x.date}</div>
+   ${x.imgs.map(i=>`<img src="${i}" style="width:100%;border-radius:8px;margin-top:6px">`).join('')}
+   <div style="font-size:12px;margin-top:6px;background:#0f0f1a;padding:6px;border-radius:6px">${x.obs}</div>
+  </div>`).join('');
+}
+render();
+</script>
+</body>
+</html>
