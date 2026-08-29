@@ -2,6 +2,112 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balística Cartagena PRO</title>
+<meta name="theme-color" content="#e94560">
+<style>
+*{box-sizing:border-box;font-family:system-ui} body{margin:0;background:#0e0e15;color:#fff}
+.header{padding:18px;background:linear-gradient(135deg,#1a1a2e,#e94560);position:sticky;top:0;z-index:10}
+.card{background:#1a1a2a;border:1px solid #2a2a4a;border-radius:16px;padding:14px;margin:12px}
+input,textarea,select{width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;color:#fff;padding:12px;margin:5px 0}
+.btn{background:#e94560;border:0;border-radius:12px;padding:14px;width:100%;font-weight:800;color:#fff;font-size:15px}
+.list-card{border-left:4px solid #e94560;cursor:pointer;transition:.2s}
+.list-card:active{transform:scale(.98)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;z-index:99;overflow-y:auto;padding:14px}
+.modal.active{display:block}
+.badge{background:#e94560;color:#fff;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="header"><h1 style="margin:0">🔬 BALÍSTICA CARTAGENA</h1><p style="margin:2px 0 0;opacity:.8;font-size:12px">Toca el caso para ver expediente</p></div>
+
+<div class="card">
+<input id="caso" placeholder="N° Caso: 13001600112920260001">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<select id="tipo"><option>Pistola</option><option>Revolver</option><option>Fusil</option><option>Escopeta</option><option>Ametralladora</option></select>
+<input id="calibre" placeholder="Calibre 9mm">
+</div>
+<input id="marca" placeholder="Marca / Modelo: Sig Sauer SP2020">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<input id="fecha" type="date"><select id="apta"><option>Apta</option><option>No Apta</option><option>Apta con restricciones</option></select>
+</div>
+<label style="font-size:11px;opacity:.6">Fotos del arma (varias)</label>
+<input id="photo" type="file" accept="image/*" multiple>
+<textarea id="desc" rows="4" placeholder="DESCRIPCIÓN TÉCNICA DEL ARMA DE FUEGO: Ej: Arma de fuego tipo pistola, fabricación... sistema de disparo... estado de conservación..."></textarea>
+<textarea id="obs" rows="2" placeholder="Observaciones / Dictamen"></textarea>
+<button class="btn" onclick="save()">💾 GUARDAR CASO</button>
+<p id="msg" style="text-align:center;font-size:12px;opacity:.6"></p>
+</div>
+
+<input id="q" placeholder="🔍 Buscar caso, calibre..." oninput="render()" style="margin:0 12px;width:calc(100% - 24px)">
+
+<div id="list"></div>
+
+<!-- MODAL EXPANDIDO -->
+<div id="modal" class="modal" onclick="if(event.target==this)closeModal()">
+<div class="card" style="margin-top:30px">
+<button onclick="closeModal()" style="float:right;background:#2a2a4a;border:0;color:#fff;border-radius:50%;width:32px;height:32px">✕</button>
+<div id="modalContent"></div>
+</div>
+</div>
+
+<script>
+let data=JSON.parse(localStorage.getItem('balistica_ctg_v2')||'[]');
+
+async function save(){
+ let caso=document.getElementById('caso').value.trim();
+ if(!caso) return alert('Escribe el N° de Caso');
+ let files=document.getElementById('photo').files;
+ if(files.length===0) return alert('Agrega mínimo 1 foto');
+ document.getElementById('msg').innerText='Guardando fotos...';
+ let imgs=await Promise.all([...files].map(f=>new Promise(res=>{let r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(f)})));
+
+ let nuevo={
+  id:Date.now(), caso:caso, tipo:tipo.value, calibre:calibre.value, marca:marca.value,
+  fecha:fecha.value || new Date().toISOString().split('T')[0], apta:apta.value,
+  desc:desc.value, obs:obs.value, imgs:imgs
+ };
+ data.unshift(nuevo);
+ localStorage.setItem('balistica_ctg_v2',JSON.stringify(data));
+ document.getElementById('msg').innerText='✅ Caso guardado';
+ caso.value=''; desc.value=''; obs.value=''; photo.value='';
+ render();
+ setTimeout(()=>msg.innerText='',2000);
+}
+
+function render(){
+ let q=document.getElementById('q').value.toLowerCase();
+ document.getElementById('list').innerHTML=data.filter(x=>JSON.stringify(x).toLowerCase().includes(q)).map(x=>`
+  <div class="card list-card" onclick="openModal(${x.id})">
+   <div style="display:flex;gap:10px;align-items:center">
+    <img src="${x.imgs[0]}" style="width:70px;height:70px;object-fit:cover;border-radius:10px">
+    <div style="flex:1"><b style="font-size:14px">${x.caso}</b><br><span class="badge">${x.tipo} ${x.calibre}</span><br><span style="font-size:11px;opacity:.6">${x.marca} • ${x.apta}</span></div>
+    <span style="opacity:.5">›</span>
+   </div>
+  </div>`).join('') || '<p style="text-align:center;opacity:.5;margin-top:30px">Sin casos aún</p>';
+}
+
+function openModal(id){
+ let x=data.find(a=>a.id===id);
+ document.getElementById('modalContent').innerHTML=`
+  <h2 style="margin:0 0 4px">${x.caso}</h2>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="badge">${x.tipo}</span><span class="badge" style="background:#2a2a4a">${x.calibre}</span><span class="badge" style="background:${x.apta.includes('Apta')?'#0f5132':'#842029'}">${x.apta}</span></div>
+  <p style="font-size:12px;opacity:.7">📅 Fecha Análisis Balístico: <b>${x.fecha}</b><br>🔫 ${x.marca}</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${x.imgs.map(i=>`<img src="${i}" style="width:100%;border-radius:10px">`).join('')}</div>
+  <div style="margin-top:12px"><b style="font-size:12px;color:#e94560">DESCRIPCIÓN TÉCNICA:</b><div style="background:#0f0f1a;padding:10px;border-radius:10px;font-size:13px;white-space:pre-wrap">${x.desc||'Sin descripción'}</div></div>
+  <div style="margin-top:10px"><b style="font-size:12px;color:#e94560">DICTAMEN / OBS:</b><div style="background:#0f0f1a;padding:10px;border-radius:10px;font-size:13px">${x.obs||'--'}</div></div>
+  <button onclick="del(${x.id})" style="margin-top:16px;background:#2a1a1a;color:#ff6b6b;border:1px solid #442a2a;width:100%;padding:10px;border-radius:10px">🗑️ Eliminar caso</button>
+ `;
+ document.getElementById('modal').classList.add('active');
+}
+function closeModal(){document.getElementById('modal').classList.remove('active')}
+function del(id){if(confirm('¿Borrar caso?')){data=data.filter(x=>x.id!==id);localStorage.setItem('balistica_ctg_v2',JSON.stringify(data));closeModal();render()}}
+render();
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Balística Forense Cartagena</title>
 <meta name="theme-color" content="#e94560">
 <style>
